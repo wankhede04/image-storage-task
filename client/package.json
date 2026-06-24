@@ -6,24 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.3.1",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "@tailwindcss/postcss": "^4.3.1",
+    "@tanstack/react-query": "^5.62.0",
+    "axios": "^1.7.9",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.5"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.5.1",
-    "oxlint": "^1.69.0",
-    "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
-    "typescript": "~6.0.2",
-    "vite": "^8.1.0"
+    "typescript": "^5.7.2",
+    "vite": "^5.4.14"
   }
 }

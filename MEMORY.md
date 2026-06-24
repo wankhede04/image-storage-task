@@ -116,20 +116,20 @@ See `.env.example` for all required variables. Copy to `.env` and fill in AWS cr
 | # | Step | Status | Commit |
 |---|---|---|---|
 | 1 | Monorepo root: package.json, .gitignore, .env.example, docker-compose.yml, MEMORY.md | ✅ Done | `chore: init monorepo root` |
-| 2 | Server scaffold: package.json, tsconfig, directory structure | ⬜ Pending | — |
-| 3 | Client scaffold: Vite + React + Tailwind + shadcn/ui | ⬜ Pending | — |
-| 4 | Prisma schema + migration | ⬜ Pending | — |
-| 5 | Server: storage service (S3) | ⬜ Pending | — |
-| 6 | Server: middleware (Multer, security) | ⬜ Pending | — |
-| 7 | Server: BullMQ queue + SSE service | ⬜ Pending | — |
-| 8 | Server: validation pipeline (all 5 validators) | ⬜ Pending | — |
-| 9 | Server: BullMQ worker (imageProcessor) | ⬜ Pending | — |
-| 10 | Server: REST routes + SSE endpoint | ⬜ Pending | — |
-| 11 | Server: app.ts wiring | ⬜ Pending | — |
-| 12 | Client: hooks (useUpload, useSSE) | ⬜ Pending | — |
-| 13 | Client: components (DropZone, ImageCard, Gallery) | ⬜ Pending | — |
-| 14 | Client: App.tsx wiring | ⬜ Pending | — |
-| 15 | Integration verification | ⬜ Pending | — |
+| 2 | Server: full Express + TS scaffold (all services, middleware, validation, worker, routes) | ✅ Done | `feat(server): scaffold Express + TypeScript backend` |
+| 3 | Client: Vite + React + Tailwind v4, all hooks + components | ✅ Done | `feat(client): scaffold React + Vite + Tailwind v4 frontend` |
+| 4 | Prisma migration (requires running postgres) | ⬜ Needs DB | run `cd server && npx prisma migrate dev --name init` |
+| 5 | Integration verification (all validators + SSE) | ⬜ Pending | — |
+
+## Important Technical Notes (for next model)
+
+- **file-type v19** is ESM-only → all imports use `await import('file-type')` dynamically
+- **BullMQ ioredis conflict** → we parse REDIS_URL to plain options; no standalone ioredis dep
+- **Tailwind v4** → CSS-first config via `@import "tailwindcss"` + `@tailwindcss/vite` plugin; no tailwind.config.js
+- **face-api models** → bundled inside `@vladmandic/face-api/model/` (no download needed)
+- **Face detection** → uses `@tensorflow/tfjs-node` (must be imported first to register Node.js backend)
+- **S3 objects** → private bucket; served via signed URLs (1hr expiry) generated on every GET
+- **Similarity** → compares only vs ACCEPTED images to keep hash index clean
 
 ---
 

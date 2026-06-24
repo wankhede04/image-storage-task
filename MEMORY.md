@@ -118,8 +118,10 @@ See `.env.example` for all required variables. Copy to `.env` and fill in AWS cr
 | 1 | Monorepo root: package.json, .gitignore, .env.example, docker-compose.yml, MEMORY.md | ✅ Done | `chore: init monorepo root` |
 | 2 | Server: full Express + TS scaffold (all services, middleware, validation, worker, routes) | ✅ Done | `feat(server): scaffold Express + TypeScript backend` |
 | 3 | Client: Vite + React + Tailwind v4, all hooks + components | ✅ Done | `feat(client): scaffold React + Vite + Tailwind v4 frontend` |
-| 4 | Prisma migration (requires running postgres) | ⬜ Needs DB | run `cd server && npx prisma migrate dev --name init` |
-| 5 | Integration verification (all validators + SSE) | ⬜ Pending | — |
+| 4 | Storage architecture applied (MinIO, StorageService, key scheme, insert-first flow) | ✅ Done | `feat: apply storage-architecture.md` |
+| 5 | Prisma migration (requires running postgres) | ⬜ Needs DB | run `cd server && npx prisma migrate dev --name init` |
+| 6 | UI revamp with /frontend-design skill | ⬜ Pending | user-requested next step |
+| 7 | Integration verification (all validators + SSE) | ⬜ Pending | — |
 
 ## Important Technical Notes (for next model)
 
@@ -128,7 +130,12 @@ See `.env.example` for all required variables. Copy to `.env` and fill in AWS cr
 - **Tailwind v4** → CSS-first config via `@import "tailwindcss"` + `@tailwindcss/vite` plugin; no tailwind.config.js
 - **face-api models** → bundled inside `@vladmandic/face-api/model/` (no download needed)
 - **Face detection** → uses `@tensorflow/tfjs-node` (must be imported first to register Node.js backend)
-- **S3 objects** → private bucket; served via signed URLs (1hr expiry) generated on every GET
+- **S3 key scheme** → `images/{imageId}/original.{ext}` + `images/{imageId}/converted.jpg` (HEIC only)
+- **S3 objects** → private bucket; presigned URLs (5 min); served via `GET /api/images/:id/file` (302) or inline in list response
+- **MinIO for local dev** → docker compose starts MinIO :9000/:9001; minio-init auto-creates `aragon-images` bucket
+- **AWS toggle** → unset `S3_ENDPOINT`+`S3_FORCE_PATH_STYLE`, set real AWS creds — zero code change needed
+- **HEIC conversion** → worker converts → stores `converted.jpg` → validates on JPEG buffer
+- **Insert-first upload** → DB row inserted before S3 upload; row marked REJECTED if upload fails (no orphans)
 - **Similarity** → compares only vs ACCEPTED images to keep hash index clean
 
 ---

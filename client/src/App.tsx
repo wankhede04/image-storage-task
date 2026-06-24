@@ -43,7 +43,7 @@ function AragonLogo() {
 function ProgressBar() {
   const { data } = useQuery({
     queryKey: ['images'],
-    queryFn: fetchImages,
+    queryFn: () => fetchImages(),
     staleTime: 1000 * 30,
   });
 

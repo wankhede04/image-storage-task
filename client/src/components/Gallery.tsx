@@ -187,7 +187,7 @@ function PhotoRequirements() {
 export function Gallery() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['images'],
-    queryFn: fetchImages,
+    queryFn: () => fetchImages(),
     refetchInterval: false,
     staleTime: 1000 * 30,
   });

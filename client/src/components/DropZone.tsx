@@ -35,7 +35,7 @@ function FileStatusIcon({ status }: { status: 'PENDING' | 'ACCEPTED' | 'REJECTED
 
 export function DropZone() {
   const { upload, state, progress, error, reset } = useUpload();
-  const { data } = useQuery({ queryKey: ['images'], queryFn: fetchImages, staleTime: 1000 * 30 });
+  const { data } = useQuery({ queryKey: ['images'], queryFn: () => fetchImages(), staleTime: 1000 * 30 });
 
   const recentFiles = (data?.data ?? []).slice(0, 14);
 

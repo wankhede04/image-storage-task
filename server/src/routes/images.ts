@@ -19,13 +19,21 @@ router.get('/events', (req: Request, res: Response) => {
 // GET /api/images — list with optional ?status filter and pagination
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { status } = req.query;
-    // parseInt('abc') → NaN; || 1 / || 20 guards against NaN
+    const rawStatus = req.query.status;
+    if (rawStatus !== undefined && typeof rawStatus !== 'string') {
+      return res.status(400).json({ error: 'Invalid status parameter' });
+    }
+    const VALID_STATUSES = ['PENDING', 'ACCEPTED', 'REJECTED'] as const;
+    const statusUpper = rawStatus?.toUpperCase();
+    if (statusUpper && !VALID_STATUSES.includes(statusUpper as typeof VALID_STATUSES[number])) {
+      return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
+    }
+
     const pageNum = Math.max(1, parseInt(req.query.page as string) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
 
-    const where = status
-      ? { status: (status as string).toUpperCase() as 'PENDING' | 'ACCEPTED' | 'REJECTED' }
+    const where = statusUpper
+      ? { status: statusUpper as typeof VALID_STATUSES[number] }
       : {};
 
     const [images, total] = await Promise.all([

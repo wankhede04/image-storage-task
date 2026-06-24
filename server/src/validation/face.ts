@@ -17,6 +17,10 @@ function ensureModelsLoaded(): Promise<void> {
   return modelLoadPromise;
 }
 
+export function warmFaceDetector(): Promise<void> {
+  return ensureModelsLoaded();
+}
+
 export async function checkFaces(buffer: Buffer): Promise<RejectionReason[]> {
   await ensureModelsLoaded();
 

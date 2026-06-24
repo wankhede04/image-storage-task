@@ -1,0 +1,30 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Prisma
+server/prisma/migrations/
+
+# Uploads (local dev)
+server/uploads/
+
+# Coverage
+coverage/
+
+# TensorFlow models cache
+server/models/

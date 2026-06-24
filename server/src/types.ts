@@ -6,7 +6,8 @@ export type RejectionReason =
   | 'NO_FACE'
   | 'MULTIPLE_FACES'
   | 'FACE_TOO_SMALL'
-  | 'TOO_SIMILAR';
+  | 'TOO_SIMILAR'
+  | 'UPLOAD_FAILED';
 
 export interface ValidationResult {
   passed: boolean;
@@ -14,5 +15,4 @@ export interface ValidationResult {
   phash?: string;
   width?: number;
   height?: number;
-  format?: string;
 }

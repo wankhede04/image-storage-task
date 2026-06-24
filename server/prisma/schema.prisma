@@ -10,8 +10,10 @@ datasource db {
 model Image {
   id               String      @id @default(cuid())
   originalName     String
-  s3Key            String      @unique
-  s3Url            String
+  /// Key of the as-uploaded object: images/{id}/original.{ext}
+  s3KeyOriginal    String      @unique
+  /// Key of the converted JPEG: images/{id}/converted.jpg — set only for HEIC sources
+  s3KeyConverted   String?
   format           String
   fileSizeBytes    Int
   width            Int?

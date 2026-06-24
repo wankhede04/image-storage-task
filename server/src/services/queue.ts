@@ -16,7 +16,7 @@ export const redisConnection = parseRedisUrl(config.REDIS_URL);
 
 export interface ProcessImageJob {
   imageId: string;
-  s3Key: string;
+  s3KeyOriginal: string;
   originalFormat: string;
 }
 

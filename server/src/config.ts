@@ -8,11 +8,20 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   DATABASE_URL: z.string(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
-  AWS_REGION: z.string(),
+  // S3 / MinIO — presence of S3_ENDPOINT means MinIO mode
+  AWS_REGION: z.string().default('us-east-1'),
   AWS_ACCESS_KEY_ID: z.string(),
   AWS_SECRET_ACCESS_KEY: z.string(),
-  AWS_S3_BUCKET: z.string(),
+  S3_BUCKET: z.string(),
+  S3_ENDPOINT: z.string().optional(),
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
+  S3_SSE: z.string().optional(),
+  // CORS
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  // Validation thresholds
   BLUR_THRESHOLD: z.coerce.number().default(100),
   MIN_IMAGE_WIDTH: z.coerce.number().default(500),
   MIN_IMAGE_HEIGHT: z.coerce.number().default(500),

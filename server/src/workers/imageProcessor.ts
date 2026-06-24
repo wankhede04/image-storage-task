@@ -1,7 +1,8 @@
 import { Worker } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
+import sharp from 'sharp';
 import { ProcessImageJob, redisConnection } from '../services/queue';
-import { getFileBuffer } from '../services/storage';
+import { storageService } from '../services/storage';
 import { broadcast } from '../services/sse';
 import { validateImage } from '../validation';
 
@@ -10,13 +11,33 @@ const prisma = new PrismaClient();
 export const imageWorker = new Worker<ProcessImageJob>(
   'image-processing',
   async (job) => {
-    const { imageId, s3Key, originalFormat } = job.data;
+    const { imageId, s3KeyOriginal, originalFormat } = job.data;
 
     try {
-      const buffer = await getFileBuffer(s3Key);
-      const fileSize = buffer.length;
+      // Download the original from object storage
+      const originalBuffer = await storageService.getObject(s3KeyOriginal);
 
-      const result = await validateImage(buffer, fileSize, prisma, imageId);
+      // Detect if HEIC and convert → store converted.jpg
+      let workingBuffer = originalBuffer;
+      let s3KeyConverted: string | null = null;
+      const isHeic = originalFormat === 'heic';
+
+      if (isHeic) {
+        const jpegBuffer = await sharp(originalBuffer).jpeg({ quality: 95 }).toBuffer();
+        s3KeyConverted = `images/${imageId}/converted.jpg`;
+        await storageService.putObject(s3KeyConverted, jpegBuffer, 'image/jpeg');
+
+        // Persist the converted key immediately so preview endpoint works while validating
+        await prisma.image.update({
+          where: { id: imageId },
+          data: { s3KeyConverted },
+        });
+
+        workingBuffer = jpegBuffer;
+      }
+
+      // Run the full validation pipeline on the (possibly converted) buffer
+      const result = await validateImage(workingBuffer, workingBuffer.length, prisma, imageId);
 
       const updatedImage = await prisma.image.update({
         where: { id: imageId },
@@ -26,7 +47,7 @@ export const imageWorker = new Worker<ProcessImageJob>(
           phash: result.phash ?? null,
           width: result.width ?? null,
           height: result.height ?? null,
-          format: result.format ?? originalFormat,
+          format: isHeic ? 'jpeg' : originalFormat,
         },
       });
 

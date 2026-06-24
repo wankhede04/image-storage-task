@@ -48,8 +48,9 @@ export function useUpload() {
             const pending: Image = {
               id: response.id,
               originalName: response.originalName,
-              s3Key: '',
-              s3Url: '',
+              s3KeyOriginal: '',
+              s3KeyConverted: null,
+              signedUrl: null,
               format: file.type.split('/')[1],
               fileSizeBytes: file.size,
               width: null,

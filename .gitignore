@@ -28,3 +28,7 @@ coverage/
 
 # TensorFlow models cache
 server/models/
+
+# Project-local tooling
+.claude/
+MEMORY.md

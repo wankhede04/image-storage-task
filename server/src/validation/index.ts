@@ -1,4 +1,3 @@
-import { PrismaClient } from '@prisma/client';
 import { ValidationResult, RejectionReason } from '../types';
 import { checkFormat } from './format';
 import { checkResolution } from './resolution';
@@ -14,7 +13,6 @@ import { checkSimilarity } from './similarity';
 export async function validateImage(
   buffer: Buffer,
   fileSizeBytes: number,
-  prisma: PrismaClient,
   imageId?: string,
 ): Promise<ValidationResult> {
   const reasons: RejectionReason[] = [];
@@ -34,19 +32,13 @@ export async function validateImage(
   const blurReason = await checkBlur(buffer);
   if (blurReason) reasons.push(blurReason);
 
-  // 4. Face detection
-  const faceReasons = await checkFaces(buffer, width, height);
+  // 4. Face detection (handles its own coordinate space internally)
+  const faceReasons = await checkFaces(buffer);
   reasons.push(...faceReasons);
 
-  // 5. Similarity
-  const { reason: simReason, phash } = await checkSimilarity(buffer, prisma, imageId);
+  // 5. Similarity vs accepted images (uses shared prisma singleton)
+  const { reason: simReason, phash } = await checkSimilarity(buffer, imageId);
   if (simReason) reasons.push(simReason);
 
-  return {
-    passed: reasons.length === 0,
-    reasons,
-    phash,
-    width,
-    height,
-  };
+  return { passed: reasons.length === 0, reasons, phash, width, height };
 }

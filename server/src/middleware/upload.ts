@@ -1,5 +1,6 @@
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
+import { fromBuffer } from 'file-type';
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/heic', 'image/heif']);
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -26,8 +27,7 @@ export async function verifyMimeType(req: Request, res: Response, next: NextFunc
     return res.status(400).json({ error: 'No file provided' });
   }
 
-  const { fileTypeFromBuffer } = await import('file-type');
-  const detected = await fileTypeFromBuffer(req.file.buffer);
+  const detected = await fromBuffer(req.file.buffer);
   if (!detected || !ALLOWED_MIME_TYPES.has(detected.mime)) {
     return res.status(400).json({
       error: 'Invalid file type. Only JPEG, PNG, and HEIC images are accepted.',

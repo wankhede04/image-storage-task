@@ -21,8 +21,8 @@ app.use('/api/images', imageRoutes);
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[Error]', err.message);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('[Error]', err.stack ?? err.message);
+  res.status(500).json({ error: err.message ?? 'Internal server error' });
 });
 
 app.listen(config.PORT, () => {

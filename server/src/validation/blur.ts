@@ -2,13 +2,11 @@ import sharp from 'sharp';
 import { RejectionReason } from '../types';
 import { config } from '../config';
 
-/**
- * Detects blur using Laplacian variance on grayscale pixels.
- * Low variance = uniform pixel values = blurry image.
- * Threshold is configurable via BLUR_THRESHOLD env var.
- */
 export async function checkBlur(buffer: Buffer): Promise<RejectionReason | null> {
+  // Resize to a fixed canvas before computing Laplacian — makes the check
+  // scale-independent and avoids processing millions of pixels for large images.
   const { data, info } = await sharp(buffer)
+    .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
     .grayscale()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -17,7 +15,7 @@ export async function checkBlur(buffer: Buffer): Promise<RejectionReason | null>
   const height = info.height;
   const pixels = new Uint8Array(data);
 
-  // 3x3 Laplacian kernel
+  // 3×3 Laplacian kernel
   const kernel = [0, 1, 0, 1, -4, 1, 0, 1, 0];
 
   let sumSq = 0;
@@ -29,8 +27,7 @@ export async function checkBlur(buffer: Buffer): Promise<RejectionReason | null>
       let val = 0;
       for (let ky = -1; ky <= 1; ky++) {
         for (let kx = -1; kx <= 1; kx++) {
-          const pixel = pixels[(y + ky) * width + (x + kx)];
-          val += pixel * kernel[(ky + 1) * 3 + (kx + 1)];
+          val += pixels[(y + ky) * width + (x + kx)] * kernel[(ky + 1) * 3 + (kx + 1)];
         }
       }
       sumVal += val;

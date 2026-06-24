@@ -1,23 +1,22 @@
-import { Worker } from 'bullmq';
-import { PrismaClient } from '@prisma/client';
+import { Worker, Job } from 'bullmq';
+import { prisma } from '../lib/prisma';
 import sharp from 'sharp';
 import { ProcessImageJob, redisConnection } from '../services/queue';
 import { storageService } from '../services/storage';
 import { broadcast } from '../services/sse';
 import { validateImage } from '../validation';
 
-const prisma = new PrismaClient();
+
+const MAX_ATTEMPTS = 3;
 
 export const imageWorker = new Worker<ProcessImageJob>(
   'image-processing',
-  async (job) => {
+  async (job: Job<ProcessImageJob>) => {
     const { imageId, s3KeyOriginal, originalFormat } = job.data;
 
     try {
-      // Download the original from object storage
       const originalBuffer = await storageService.getObject(s3KeyOriginal);
 
-      // Detect if HEIC and convert → store converted.jpg
       let workingBuffer = originalBuffer;
       let s3KeyConverted: string | null = null;
       const isHeic = originalFormat === 'heic';
@@ -26,18 +25,15 @@ export const imageWorker = new Worker<ProcessImageJob>(
         const jpegBuffer = await sharp(originalBuffer).jpeg({ quality: 95 }).toBuffer();
         s3KeyConverted = `images/${imageId}/converted.jpg`;
         await storageService.putObject(s3KeyConverted, jpegBuffer, 'image/jpeg');
-
-        // Persist the converted key immediately so preview endpoint works while validating
         await prisma.image.update({
           where: { id: imageId },
           data: { s3KeyConverted },
         });
-
         workingBuffer = jpegBuffer;
       }
 
-      // Run the full validation pipeline on the (possibly converted) buffer
-      const result = await validateImage(workingBuffer, workingBuffer.length, prisma, imageId);
+      // Use the original uploaded file size, not the converted buffer size
+      const result = await validateImage(workingBuffer, originalBuffer.length, imageId);
 
       const updatedImage = await prisma.image.update({
         where: { id: imageId },
@@ -60,19 +56,24 @@ export const imageWorker = new Worker<ProcessImageJob>(
         height: updatedImage.height,
       });
     } catch (err) {
-      console.error(`[Worker] Failed to process image ${imageId}:`, err);
+      console.error(`[Worker] Failed to process image ${imageId} (attempt ${job.attemptsMade}):`, err);
 
-      await prisma.image.update({
-        where: { id: imageId },
-        data: { status: 'REJECTED', rejectionReasons: ['INVALID_FORMAT'] },
-      });
-
-      broadcast({
-        type: 'IMAGE_PROCESSED',
-        id: imageId,
-        status: 'REJECTED',
-        rejectionReasons: ['INVALID_FORMAT'],
-      });
+      // Only write REJECTED on the final attempt — re-throws let BullMQ retry.
+      // Writing REJECTED on earlier attempts then succeeding on retry would send
+      // a contradictory REJECTED → ACCEPTED SSE pair to the client.
+      const isFinalAttempt = job.attemptsMade >= MAX_ATTEMPTS;
+      if (isFinalAttempt) {
+        await prisma.image.update({
+          where: { id: imageId },
+          data: { status: 'REJECTED', rejectionReasons: ['PROCESSING_FAILED'] },
+        });
+        broadcast({
+          type: 'IMAGE_PROCESSED',
+          id: imageId,
+          status: 'REJECTED',
+          rejectionReasons: ['PROCESSING_FAILED'],
+        });
+      }
 
       throw err;
     }
@@ -81,5 +82,5 @@ export const imageWorker = new Worker<ProcessImageJob>(
 );
 
 imageWorker.on('failed', (job, err) => {
-  console.error(`[Worker] Job ${job?.id} failed:`, err.message);
+  console.error(`[Worker] Job ${job?.id} permanently failed:`, err.message);
 });

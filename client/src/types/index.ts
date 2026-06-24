@@ -9,7 +9,8 @@ export type RejectionReason =
   | 'MULTIPLE_FACES'
   | 'FACE_TOO_SMALL'
   | 'TOO_SIMILAR'
-  | 'UPLOAD_FAILED';
+  | 'UPLOAD_FAILED'
+  | 'PROCESSING_FAILED';
 
 export interface Image {
   id: string;
@@ -62,4 +63,5 @@ export const REJECTION_LABELS: Record<RejectionReason, string> = {
   FACE_TOO_SMALL: 'Face is too small in frame',
   TOO_SIMILAR: 'Too similar to an existing image',
   UPLOAD_FAILED: 'Storage upload failed',
+  PROCESSING_FAILED: 'Processing error — try again',
 };

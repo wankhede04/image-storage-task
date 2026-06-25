@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq';
 import { prisma } from '../lib/prisma';
-import sharp from 'sharp';
+import heicConvert from 'heic-convert';
 import { ProcessImageJob, redisConnection } from '../services/queue';
 import { storageService } from '../services/storage';
 import { broadcast } from '../services/sse';
@@ -22,7 +22,9 @@ export const imageWorker = new Worker<ProcessImageJob>(
       const isHeic = originalFormat === 'heic';
 
       if (isHeic) {
-        const jpegBuffer = await sharp(originalBuffer).jpeg({ quality: 95 }).toBuffer();
+        const jpegBuffer = Buffer.from(
+          await heicConvert({ buffer: originalBuffer, format: 'JPEG', quality: 0.95 }),
+        );
         s3KeyConverted = `images/${imageId}/converted.jpg`;
         await storageService.putObject(s3KeyConverted, jpegBuffer, 'image/jpeg');
         await prisma.image.update({
@@ -61,7 +63,8 @@ export const imageWorker = new Worker<ProcessImageJob>(
       // Only write REJECTED on the final attempt — re-throws let BullMQ retry.
       // Writing REJECTED on earlier attempts then succeeding on retry would send
       // a contradictory REJECTED → ACCEPTED SSE pair to the client.
-      const isFinalAttempt = job.attemptsMade >= MAX_ATTEMPTS;
+      // attemptsMade is 0-indexed and tops out at (attempts - 1), so use MAX_ATTEMPTS - 1.
+      const isFinalAttempt = job.attemptsMade >= MAX_ATTEMPTS - 1;
       if (isFinalAttempt) {
         await prisma.image.update({
           where: { id: imageId },
@@ -81,6 +84,20 @@ export const imageWorker = new Worker<ProcessImageJob>(
   { connection: { ...redisConnection }, concurrency: 2 },
 );
 
-imageWorker.on('failed', (job, err) => {
+imageWorker.on('failed', async (job, err) => {
   console.error(`[Worker] Job ${job?.id} permanently failed:`, err.message);
+  if (!job) return;
+  const { imageId } = job.data;
+  try {
+    const image = await prisma.image.findUnique({ where: { id: imageId }, select: { status: true } });
+    if (image?.status === 'PENDING') {
+      await prisma.image.update({
+        where: { id: imageId },
+        data: { status: 'REJECTED', rejectionReasons: ['PROCESSING_FAILED'] },
+      });
+      broadcast({ type: 'IMAGE_PROCESSED', id: imageId, status: 'REJECTED', rejectionReasons: ['PROCESSING_FAILED'] });
+    }
+  } catch (updateErr) {
+    console.error(`[Worker] Failed to mark image ${imageId} as REJECTED:`, updateErr);
+  }
 });

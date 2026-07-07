@@ -16,6 +16,10 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string(),
   S3_BUCKET: z.string(),
   S3_ENDPOINT: z.string().optional(),
+  // Endpoint baked into presigned URLs handed to browsers/host tools — distinct from
+  // S3_ENDPOINT when the app runs in a container (S3_ENDPOINT=http://minio:9000 is only
+  // reachable inside the compose network). Falls back to S3_ENDPOINT when unset.
+  S3_PUBLIC_ENDPOINT: z.string().optional(),
   S3_FORCE_PATH_STYLE: z
     .string()
     .optional()

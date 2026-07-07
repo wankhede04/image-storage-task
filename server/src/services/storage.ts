@@ -33,14 +33,30 @@ function createS3Client(): S3Client {
   });
 }
 
+// Presigned URLs embed whatever endpoint this client is configured with. When the app
+// runs in a container, S3_ENDPOINT (e.g. http://minio:9000) is only reachable from other
+// containers — browsers/host tools need S3_PUBLIC_ENDPOINT (e.g. http://localhost:9000) instead.
+function createPublicS3Client(): S3Client {
+  const publicEndpoint = config.S3_PUBLIC_ENDPOINT ?? config.S3_ENDPOINT;
+  return new S3Client({
+    region: config.AWS_REGION,
+    ...(publicEndpoint && {
+      endpoint: publicEndpoint,
+      forcePathStyle: config.S3_FORCE_PATH_STYLE ?? true,
+    }),
+  });
+}
+
 // ── Implementation ────────────────────────────────────────────────────────────
 
 class S3StorageService implements StorageService {
   private readonly client: S3Client;
+  private readonly publicClient: S3Client;
   private readonly bucket: string;
 
   constructor() {
     this.client = createS3Client();
+    this.publicClient = createPublicS3Client();
     this.bucket = config.S3_BUCKET;
   }
 
@@ -71,7 +87,7 @@ class S3StorageService implements StorageService {
 
   async getSignedUrl(key: string, expiresInSec = 300): Promise<string> {
     return awsGetSignedUrl(
-      this.client,
+      this.publicClient,
       new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       { expiresIn: expiresInSec },
     );

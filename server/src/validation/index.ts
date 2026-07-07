@@ -1,4 +1,5 @@
 import { ValidationResult, RejectionReason } from '../types';
+import { config } from '../config';
 import { checkFormat } from './format';
 import { checkResolution } from './resolution';
 import { checkBlur } from './blur';
@@ -32,13 +33,18 @@ export async function validateImage(
   const blurReason = await checkBlur(buffer);
   if (blurReason) reasons.push(blurReason);
 
-  // 4. Face detection (handles its own coordinate space internally)
-  const faceReasons = await checkFaces(buffer);
-  reasons.push(...faceReasons);
+  // 4 & 5. Face detection + similarity — skipped entirely in LOAD_TEST_MODE
+  let phash: string | undefined;
+  if (!config.LOAD_TEST_MODE) {
+    // Face detection (handles its own coordinate space internally)
+    const faceReasons = await checkFaces(buffer);
+    reasons.push(...faceReasons);
 
-  // 5. Similarity vs accepted images (uses shared prisma singleton)
-  const { reason: simReason, phash } = await checkSimilarity(buffer, imageId);
-  if (simReason) reasons.push(simReason);
+    // Similarity vs accepted images (uses shared prisma singleton)
+    const { reason: simReason, phash: computedPhash } = await checkSimilarity(buffer, imageId);
+    if (simReason) reasons.push(simReason);
+    phash = computedPhash;
+  }
 
   return { passed: reasons.length === 0, reasons, phash, width, height };
 }

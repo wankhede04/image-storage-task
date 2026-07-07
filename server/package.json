@@ -10,7 +10,15 @@
     "db:generate": "dotenv -e ../.env -- prisma generate",
     "db:studio": "dotenv -e ../.env -- prisma studio",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:worker:validation": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/validationWorker.ts",
+    "dev:worker:conversion": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/conversionWorker.ts",
+    "dev:worker:compression": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/compressionWorker.ts",
+    "dev:worker:variant": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/variantWorker.ts",
+    "worker:validation": "node dist/workers/validationWorker.js",
+    "worker:conversion": "node dist/workers/conversionWorker.js",
+    "worker:compression": "node dist/workers/compressionWorker.js",
+    "worker:variant": "node dist/workers/variantWorker.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",

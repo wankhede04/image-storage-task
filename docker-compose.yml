@@ -114,6 +114,9 @@ services:
       DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      # Cap libvips CPU parallelism per replica so one replica ~ one core of image work;
+      # scale throughput by adding replicas (--scale) instead of oversubscribing cores.
+      VIPS_CONCURRENCY: '1'
     restart: unless-stopped
 
   compression-worker:
@@ -128,6 +131,9 @@ services:
       DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      # Cap libvips CPU parallelism per replica so one replica ~ one core of image work;
+      # scale throughput by adding replicas (--scale) instead of oversubscribing cores.
+      VIPS_CONCURRENCY: '1'
     restart: unless-stopped
 
   variant-worker:
@@ -142,6 +148,9 @@ services:
       DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
+      # Cap libvips CPU parallelism per replica so one replica ~ one core of image work;
+      # scale throughput by adding replicas (--scale) instead of oversubscribing cores.
+      VIPS_CONCURRENCY: '1'
     restart: unless-stopped
 
 volumes:

@@ -17,9 +17,6 @@ Thumbs.db
 *.swp
 *.swo
 
-# Prisma
-server/prisma/migrations/
-
 # Uploads (local dev)
 server/uploads/
 

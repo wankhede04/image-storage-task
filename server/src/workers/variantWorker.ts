@@ -35,36 +35,39 @@ export async function processVariantJob(imageId: string): Promise<void> {
 
   const variants = await generateVariants(inputBuffer);
 
+  const keyedVariants = variants.map((variant) => ({
+    ...variant,
+    key: `images/${imageId}/variants/${variant.type.toLowerCase()}.jpg`,
+  }));
+
   await Promise.all(
-    variants.map((variant) => {
-      const key = `images/${imageId}/variants/${variant.type.toLowerCase()}.jpg`;
-      return storageService.putObject(key, variant.buffer, 'image/jpeg').then(() => key);
-    }),
+    keyedVariants.map((variant) =>
+      storageService.putObject(variant.key, variant.buffer, 'image/jpeg'),
+    ),
   );
 
   await prisma.$transaction([
-    ...variants.map((variant) => {
-      const key = `images/${imageId}/variants/${variant.type.toLowerCase()}.jpg`;
-      return prisma.imageVariant.upsert({
+    ...keyedVariants.map((variant) =>
+      prisma.imageVariant.upsert({
         where: { imageId_type: { imageId, type: variant.type } },
         create: {
           imageId,
           type: variant.type,
-          s3Key: key,
+          s3Key: variant.key,
           width: variant.width,
           height: variant.height,
           sizeBytes: variant.sizeBytes,
           format: variant.format,
         },
         update: {
-          s3Key: key,
+          s3Key: variant.key,
           width: variant.width,
           height: variant.height,
           sizeBytes: variant.sizeBytes,
           format: variant.format,
         },
-      });
-    }),
+      }),
+    ),
     prisma.image.update({
       where: { id: imageId },
       data: { pipelineStatus: 'COMPLETE' },

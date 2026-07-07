@@ -1,4 +1,3 @@
-import '../config'; // ensure .env is loaded before the shared prisma client is constructed
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { createId } from '@paralleldrive/cuid2';

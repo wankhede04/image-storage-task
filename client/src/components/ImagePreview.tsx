@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { Image } from '../types';
-import { REJECTION_LABELS } from '../types';
+import { PIPELINE_STATUS_LABELS, REJECTION_LABELS } from '../types';
+import { fetchImageVariants } from '../lib/api';
 
 interface Props {
   image: Image;
@@ -13,6 +15,22 @@ const STATUS_STYLE = {
   REJECTED: { bg: '#fef2f2', color: '#b91c1c', label: 'Rejected' },
 } as const;
 
+const PIPELINE_STAGE_COLOR: Record<Image['pipelineStatus'], string> = {
+  NOT_STARTED: '#a1a1aa',
+  QUEUED: '#c2410c',
+  CONVERTING: '#c2410c',
+  COMPRESSING: '#c2410c',
+  GENERATING_VARIANTS: '#c2410c',
+  COMPLETE: '#15803d',
+  FAILED: '#b91c1c',
+};
+
+const VARIANT_LABELS: Record<string, string> = {
+  THUMBNAIL: 'Thumbnail',
+  WEB: 'Web',
+  FULL: 'Full',
+};
+
 export function ImagePreview({ image, onClose }: Props) {
   // Close on Escape
   useEffect(() => {
@@ -22,6 +40,12 @@ export function ImagePreview({ image, onClose }: Props) {
   }, [onClose]);
 
   const st = STATUS_STYLE[image.status];
+
+  const { data: variantsData } = useQuery({
+    queryKey: ['imageVariants', image.id],
+    queryFn: () => fetchImageVariants(image.id),
+    enabled: image.pipelineStatus === 'COMPLETE',
+  });
 
   return (
     <div
@@ -177,6 +201,71 @@ export function ImagePreview({ image, onClose }: Props) {
                   }}>✓</span>
                   Passed all checks
                 </div>
+              </Section>
+            )}
+
+            {image.status === 'ACCEPTED' && (
+              <Section title="Processing Pipeline">
+                <Row label="Pipeline">
+                  <span style={{ color: PIPELINE_STAGE_COLOR[image.pipelineStatus], fontWeight: 600 }}>
+                    {PIPELINE_STATUS_LABELS[image.pipelineStatus] || 'Not started'}
+                  </span>
+                </Row>
+
+                {image.pipelineStatus === 'FAILED' && image.pipelineError && (
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 7,
+                    padding: '8px 0 2px',
+                  }}>
+                    <span style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: '#fef2f2', color: '#ef4444',
+                      fontSize: 9, fontWeight: 800,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, marginTop: 1,
+                    }}>✕</span>
+                    <span style={{ fontSize: 12, color: '#b91c1c', lineHeight: 1.5 }}>
+                      {image.pipelineError}
+                    </span>
+                  </div>
+                )}
+
+                {image.compressionRatio != null && (
+                  <Row label="Compression">
+                    {Math.round((1 - image.compressionRatio) * 100)}% smaller
+                    {image.compressedSizeBytes != null && (
+                      <> · {(image.compressedSizeBytes / 1024).toFixed(1)} KB</>
+                    )}
+                  </Row>
+                )}
+              </Section>
+            )}
+
+            {image.pipelineStatus === 'COMPLETE' && variantsData && variantsData.variants.length > 0 && (
+              <Section title="Variants">
+                {variantsData.variants.map((v) => (
+                  <div key={v.type} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 0', borderBottom: '1px solid #f4f4f5', gap: 8,
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#18181b' }}>
+                        {VARIANT_LABELS[v.type] ?? v.type}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#a1a1aa', marginTop: 1 }}>
+                        {v.width}×{v.height} · {(v.sizeBytes / 1024).toFixed(0)} KB
+                      </div>
+                    </div>
+                    <a
+                      href={v.signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 12, color: '#f97316', fontWeight: 600, flexShrink: 0, textDecoration: 'none' }}
+                    >
+                      Open
+                    </a>
+                  </div>
+                ))}
               </Section>
             )}
           </div>

@@ -30,6 +30,12 @@ const envSchema = z.object({
   MIN_FILE_SIZE_BYTES: z.coerce.number().default(50000),
   SIMILARITY_HAMMING_THRESHOLD: z.coerce.number().default(10),
   FACE_AREA_MIN_RATIO: z.coerce.number().default(0.02),
+  // --- Processing pipeline (Part 2) ---
+  LOAD_TEST_MODE: z.string().optional().transform((v) => v === 'true'),
+  WORKER_CONCURRENCY: z.coerce.number().default(4),
+  COMPRESSION_QUALITY: z.coerce.number().default(80),
+  THUMBNAIL_SIZE: z.coerce.number().default(256),
+  WEB_SIZE: z.coerce.number().default(1280),
 });
 
 const parsed = envSchema.safeParse(process.env);

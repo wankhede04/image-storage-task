@@ -1,15 +1,27 @@
-import '@tensorflow/tfjs-node';
-import * as tf from '@tensorflow/tfjs-node';
-import * as faceapi from '@vladmandic/face-api';
 import sharp from 'sharp';
 import { RejectionReason } from '../types';
 import { config } from '../config';
+
+// @tensorflow/tfjs-node and @vladmandic/face-api are required lazily (inside
+// ensureModelsLoaded) rather than statically imported at module load time.
+// tfjs-node ships a native NAPI addon with no prebuilt binary for
+// linux/arm64 (only linux/x86_64, darwin, windows) — on an arm64 host/container
+// this throws ERR_DLOPEN_FAILED the instant the module is required, which
+// would crash the whole process before LOAD_TEST_MODE is ever checked.
+// Deferring the require to first real use means LOAD_TEST_MODE=true (which
+// skips calling checkFaces/warmFaceDetector) lets the process boot cleanly
+// on such hosts; the crash still surfaces (unchanged) if face-checking is
+// actually invoked on an unsupported platform.
+let tf: typeof import('@tensorflow/tfjs-node');
+let faceapi: typeof import('@vladmandic/face-api');
 
 // Promise-based lock prevents concurrent model loads under worker concurrency ≥2
 let modelLoadPromise: Promise<void> | null = null;
 
 function ensureModelsLoaded(): Promise<void> {
   if (!modelLoadPromise) {
+    tf = require('@tensorflow/tfjs-node');
+    faceapi = require('@vladmandic/face-api');
     const faceApiPkg = require.resolve('@vladmandic/face-api/package.json');
     const modelPath = faceApiPkg.replace('package.json', 'model');
     modelLoadPromise = faceapi.nets.tinyFaceDetector.loadFromDisk(modelPath);
@@ -31,7 +43,7 @@ export async function checkFaces(buffer: Buffer): Promise<RejectionReason[]> {
     .toBuffer({ resolveWithObject: true });
 
   const tensor = tf.tensor3d(new Uint8Array(data), [info.height, info.width, 3]);
-  let detections: faceapi.FaceDetection[];
+  let detections: import('@vladmandic/face-api').FaceDetection[];
 
   try {
     detections = await faceapi.detectAllFaces(

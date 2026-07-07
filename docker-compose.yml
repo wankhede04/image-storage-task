@@ -65,6 +65,81 @@ services:
       "
     restart: 'no'
 
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    ports:
+      - '3001:3001'
+    restart: unless-stopped
+
+  validation-worker:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    command: ['node', 'dist/workers/validationWorker.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    restart: unless-stopped
+
+  conversion-worker:
+    build: { context: ., dockerfile: server/Dockerfile }
+    command: ['node', 'dist/workers/conversionWorker.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    restart: unless-stopped
+
+  compression-worker:
+    build: { context: ., dockerfile: server/Dockerfile }
+    command: ['node', 'dist/workers/compressionWorker.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    restart: unless-stopped
+
+  variant-worker:
+    build: { context: ., dockerfile: server/Dockerfile }
+    command: ['node', 'dist/workers/variantWorker.js']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon_db
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:

@@ -64,3 +64,64 @@ In `.env`, comment out the MinIO vars and fill in the real AWS credentials (see 
 ```bash
 npm run docker:down
 ```
+
+## Media Processing Pipeline (Part 2)
+
+Once an image is validated and `ACCEPTED`, a second pipeline normalizes it to JPEG, compresses it, and generates `THUMBNAIL`/`WEB`/`FULL` variants. This runs across four workers (validation, conversion, compression, variant) in addition to the API.
+
+**1. Run the pipeline locally without Docker**
+
+Alongside the existing `npm run dev` (API + client), start each worker in its own terminal from `server/`:
+
+```bash
+npm run dev:worker:validation --workspace=server
+npm run dev:worker:conversion --workspace=server
+npm run dev:worker:compression --workspace=server
+npm run dev:worker:variant --workspace=server
+```
+
+**2. Run the full stack via Docker**
+
+```bash
+docker compose up -d
+```
+
+This builds and starts `api`, `validation-worker`, `conversion-worker`, `compression-worker`, and `variant-worker`, alongside `postgres`, `redis`, and `minio`.
+
+To scale the CPU/IO-heavy stages horizontally:
+
+```bash
+docker compose up -d --scale conversion-worker=4 --scale compression-worker=4 --scale variant-worker=4
+```
+
+Confirm replica counts:
+
+```bash
+docker compose ps
+```
+
+**3. Check a single image's pipeline status**
+
+```bash
+curl http://localhost:3001/api/images/<id>
+```
+
+The response includes `pipelineStatus` (`NOT_STARTED` → `QUEUED` → `CONVERTING` → `COMPRESSING` → `GENERATING_VARIANTS` → `COMPLETE`, or `FAILED`).
+
+To fetch signed URLs for the generated variants once processing completes:
+
+```bash
+curl http://localhost:3001/api/images/<id>/variants
+```
+
+**4. Run the load test**
+
+Set `LOAD_TEST_MODE=true` in `.env` (this skips the face-detection and similarity checks so synthetic images can pass validation) and restart the server/workers, then run:
+
+```bash
+node scripts/load-test.mjs 200 --concurrency=20
+```
+
+Additional flags: `--base-url=<url>` (default `http://localhost:3001`), `--poll-interval=<ms>`, `--poll-timeout=<ms>`.
+
+**Remember to set `LOAD_TEST_MODE` back to `false` (the default) before normal or production use** — it disables real validation checks and must never be left on outside of load testing.

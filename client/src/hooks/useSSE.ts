@@ -14,14 +14,48 @@ export function useSSE() {
     source.onmessage = (event) => {
       const msg: SSEMessage = JSON.parse(event.data);
 
-      if (msg.type === 'IMAGE_PROCESSED') {
-        // Find the image name from cache for the toast
+      const findImageName = () => {
         const cached = queryClient.getQueriesData<{ data: Image[] }>({ queryKey: ['images'] });
-        let imageName = 'Image';
         for (const [, data] of cached) {
           const found = data?.data?.find((i) => i.id === msg.id);
-          if (found) { imageName = found.originalName; break; }
+          if (found) return found.originalName;
         }
+        return 'Image';
+      };
+
+      if (msg.type === 'PIPELINE_UPDATE') {
+        const imageName = findImageName();
+
+        // Update in-place in the cache
+        queryClient.setQueriesData<{ data: Image[]; total: number; page: number; limit: number }>(
+          { queryKey: ['images'] },
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              data: old.data.map((img) =>
+                img.id === msg.id
+                  ? {
+                      ...img,
+                      pipelineStatus: msg.pipelineStatus,
+                      pipelineError: msg.pipelineError ?? null,
+                    }
+                  : img,
+              ),
+            };
+          },
+        );
+
+        // Once the pipeline completes, re-fetch so any open detail view picks up variants
+        if (msg.pipelineStatus === 'COMPLETE') {
+          queryClient.invalidateQueries({ queryKey: ['images'] });
+          toast(`${imageName} ready — variants generated`, 'success');
+        } else if (msg.pipelineStatus === 'FAILED') {
+          toast(`${imageName} processing failed`, 'error');
+        }
+      } else if (msg.type === 'IMAGE_PROCESSED') {
+        // Find the image name from cache for the toast
+        const imageName = findImageName();
 
         // Update in-place in the cache
         queryClient.setQueriesData<{ data: Image[]; total: number; page: number; limit: number }>(

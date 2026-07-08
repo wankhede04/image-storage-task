@@ -13,9 +13,11 @@ export const corsMiddleware = cors({
   allowedHeaders: ['Content-Type'],
 });
 
+// LOAD_TEST_MODE relaxes rate limits so the load test can actually submit a large
+// batch concurrently and poll statuses without tripping 429s. Never enable in production.
 export const uploadRateLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 20,
+  max: config.LOAD_TEST_MODE ? 10_000 : 20,
   message: { error: 'Too many uploads. Please wait a minute.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -23,7 +25,7 @@ export const uploadRateLimit = rateLimit({
 
 export const apiRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 200,
+  max: config.LOAD_TEST_MODE ? 100_000 : 200,
   standardHeaders: true,
   legacyHeaders: false,
 });

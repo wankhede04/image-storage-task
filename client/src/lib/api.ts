@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Image, ListResponse, UploadResponse } from '../types';
+import type { Image, ImageVariant, ListResponse, PipelineStatus, UploadResponse } from '../types';
 
 const BASE = '/api';
 
@@ -36,4 +36,13 @@ export async function uploadImage(
 
 export async function deleteImage(id: string): Promise<void> {
   await http.delete(`/images/${id}`);
+}
+
+export async function fetchImageVariants(id: string): Promise<{
+  pipelineStatus: PipelineStatus;
+  pipelineError: string | null;
+  variants: ImageVariant[];
+}> {
+  const { data } = await http.get(`/images/${id}/variants`);
+  return data;
 }

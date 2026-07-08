@@ -4,7 +4,7 @@ import { deleteImage } from '../lib/api';
 import { useToast } from './Toast';
 import { ImagePreview } from './ImagePreview';
 import type { Image } from '../types';
-import { REJECTION_LABELS } from '../types';
+import { PIPELINE_STATUS_LABELS, REJECTION_LABELS } from '../types';
 
 interface Props {
   image: Image;
@@ -101,6 +101,66 @@ export function ImageCard({ image, variant = 'accepted', index }: Props) {
         }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{index + 1}</span>
         </div>
+      )}
+
+      {/* Pipeline status badge (accepted images only) */}
+      {variant === 'accepted' && (
+        <>
+          {(image.pipelineStatus === 'QUEUED' ||
+            image.pipelineStatus === 'CONVERTING' ||
+            image.pipelineStatus === 'COMPRESSING' ||
+            image.pipelineStatus === 'GENERATING_VARIANTS') && (
+            <div style={{
+              position: 'absolute', bottom: 7, left: 7,
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+              borderRadius: 20, padding: '3px 8px 3px 5px',
+              pointerEvents: 'none',
+            }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="3" strokeLinecap="round"
+                style={{ animation: 'spin 0.9s linear infinite', flexShrink: 0 }}>
+                <path d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#fff' }}>
+                {PIPELINE_STATUS_LABELS[image.pipelineStatus]}
+              </span>
+            </div>
+          )}
+
+          {image.pipelineStatus === 'COMPLETE' && (
+            <div
+              title="Processing complete"
+              style={{
+                position: 'absolute', bottom: 7, left: 7,
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'rgba(22,163,74,0.9)', backdropFilter: 'blur(4px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                opacity: hovered ? 1 : 0.55,
+                transition: 'opacity 0.15s ease',
+                pointerEvents: 'none',
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+          )}
+
+          {image.pipelineStatus === 'FAILED' && (
+            <div
+              title={image.pipelineError ?? 'Processing failed'}
+              style={{
+                position: 'absolute', bottom: 7, left: 7,
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'rgba(239,68,68,0.9)', backdropFilter: 'blur(4px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'auto',
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', lineHeight: 1 }}>!</span>
+            </div>
+          )}
+        </>
       )}
 
       {/* Processing spinner overlay */}

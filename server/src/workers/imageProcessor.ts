@@ -5,6 +5,7 @@ import { ProcessImageJob, redisConnection } from '../services/queue';
 import { storageService } from '../services/storage';
 import { broadcast } from '../services/sse';
 import { validateImage } from '../validation';
+import { enqueueConversion } from '../services/pipelineQueues';
 
 
 const MAX_ATTEMPTS = 3;
@@ -46,6 +47,7 @@ export const imageWorker = new Worker<ProcessImageJob>(
           width: result.width ?? null,
           height: result.height ?? null,
           format: isHeic ? 'jpeg' : originalFormat,
+          ...(result.passed && { pipelineStatus: 'QUEUED' }),
         },
       });
 
@@ -57,6 +59,25 @@ export const imageWorker = new Worker<ProcessImageJob>(
         width: updatedImage.width,
         height: updatedImage.height,
       });
+
+      if (result.passed) {
+        try {
+          await enqueueConversion(imageId);
+        } catch (enqueueErr) {
+          const message = enqueueErr instanceof Error ? enqueueErr.message : String(enqueueErr);
+          console.error(`[Worker] Failed to enqueue conversion for image ${imageId}:`, enqueueErr);
+          await prisma.image.update({
+            where: { id: imageId },
+            data: { pipelineStatus: 'FAILED', pipelineError: `CONVERSION_FAILED: enqueue error: ${message}` },
+          });
+          broadcast({
+            type: 'PIPELINE_UPDATE',
+            id: imageId,
+            pipelineStatus: 'FAILED',
+            pipelineError: `CONVERSION_FAILED: enqueue error: ${message}`,
+          });
+        }
+      }
     } catch (err) {
       console.error(`[Worker] Failed to process image ${imageId} (attempt ${job.attemptsMade}):`, err);
 

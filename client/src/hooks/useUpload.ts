@@ -62,6 +62,10 @@ export function useUpload() {
               phash: null,
               createdAt: response.createdAt,
               updatedAt: response.createdAt,
+              pipelineStatus: 'NOT_STARTED',
+              pipelineError: null,
+              compressionRatio: null,
+              compressedSizeBytes: null,
             };
             return { ...old, data: [pending, ...old.data], total: old.total + 1 };
           },

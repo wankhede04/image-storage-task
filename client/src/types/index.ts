@@ -12,6 +12,31 @@ export type RejectionReason =
   | 'UPLOAD_FAILED'
   | 'PROCESSING_FAILED';
 
+export type PipelineStatus =
+  | 'NOT_STARTED' | 'QUEUED' | 'CONVERTING' | 'COMPRESSING'
+  | 'GENERATING_VARIANTS' | 'COMPLETE' | 'FAILED';
+
+export type VariantType = 'THUMBNAIL' | 'WEB' | 'FULL';
+
+export interface ImageVariant {
+  type: VariantType;
+  width: number;
+  height: number;
+  sizeBytes: number;
+  format: string;
+  signedUrl: string;
+}
+
+export const PIPELINE_STATUS_LABELS: Record<PipelineStatus, string> = {
+  NOT_STARTED: '',
+  QUEUED: 'Queued',
+  CONVERTING: 'Converting',
+  COMPRESSING: 'Compressing',
+  GENERATING_VARIANTS: 'Generating variants',
+  COMPLETE: 'Ready',
+  FAILED: 'Processing failed',
+};
+
 export interface Image {
   id: string;
   originalName: string;
@@ -28,6 +53,12 @@ export interface Image {
   phash: string | null;
   createdAt: string;
   updatedAt: string;
+  pipelineStatus: PipelineStatus;
+  pipelineError: string | null;
+  compressionRatio: number | null;
+  compressedSizeBytes: number | null;
+  /** Only present on detail responses (list rows omit this to avoid N+1). */
+  variants?: ImageVariant[];
 }
 
 export interface UploadResponse {
@@ -44,14 +75,21 @@ export interface ListResponse {
   limit: number;
 }
 
-export interface SSEMessage {
-  type: 'IMAGE_PROCESSED';
-  id: string;
-  status: ImageStatus;
-  rejectionReasons: RejectionReason[];
-  width?: number;
-  height?: number;
-}
+export type SSEMessage =
+  | {
+      type: 'IMAGE_PROCESSED';
+      id: string;
+      status: ImageStatus;
+      rejectionReasons: RejectionReason[];
+      width?: number;
+      height?: number;
+    }
+  | {
+      type: 'PIPELINE_UPDATE';
+      id: string;
+      pipelineStatus: PipelineStatus;
+      pipelineError?: string | null;
+    };
 
 export const REJECTION_LABELS: Record<RejectionReason, string> = {
   INVALID_FORMAT: 'Invalid file format',

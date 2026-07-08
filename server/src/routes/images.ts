@@ -53,7 +53,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (img.status !== 'PENDING') {
           signedUrl = await storageService.getSignedUrl(previewKey, 300).catch(() => null);
         }
-        return { ...img, signedUrl };
+        return { ...img, signedUrl }; // pipelineStatus included via spread (plain column on Image)
       }),
     );
 
@@ -77,10 +77,47 @@ router.get('/:id/file', async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
+// GET /api/images/:id/variants — pipeline variant URLs (must be before /:id to avoid param capture)
+router.get('/:id/variants', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const image = await prisma.image.findUnique({
+      where: { id: req.params.id },
+      include: { variants: true },
+    });
+    if (!image) return res.status(404).json({ error: 'Image not found' });
+
+    if (image.pipelineStatus !== 'COMPLETE') {
+      return res.json({
+        pipelineStatus: image.pipelineStatus,
+        pipelineError: image.pipelineError ?? null,
+        variants: [],
+      });
+    }
+
+    const variants = await Promise.all(
+      image.variants.map(async (v) => ({
+        type: v.type,
+        width: v.width,
+        height: v.height,
+        sizeBytes: v.sizeBytes,
+        format: v.format,
+        signedUrl: await storageService.getSignedUrl(v.s3Key, 300),
+      })),
+    );
+
+    res.json({ pipelineStatus: 'COMPLETE', variants });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/images/:id — single image detail
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const image = await prisma.image.findUnique({ where: { id: req.params.id } });
+    const image = await prisma.image.findUnique({
+      where: { id: req.params.id },
+      include: { variants: true },
+    });
     if (!image) return res.status(404).json({ error: 'Image not found' });
 
     const previewKey = image.s3KeyConverted ?? image.s3KeyOriginal;
@@ -88,7 +125,21 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
       ? await storageService.getSignedUrl(previewKey, 300).catch(() => null)
       : null;
 
-    res.json({ ...image, signedUrl });
+    const variants = image.pipelineStatus === 'COMPLETE'
+      ? await Promise.all(
+          image.variants.map(async (v) => ({
+            type: v.type,
+            s3Key: v.s3Key,
+            width: v.width,
+            height: v.height,
+            sizeBytes: v.sizeBytes,
+            format: v.format,
+            signedUrl: await storageService.getSignedUrl(v.s3Key, 300),
+          })),
+        )
+      : [];
+
+    res.json({ ...image, signedUrl, variants });
   } catch (err) {
     next(err);
   }

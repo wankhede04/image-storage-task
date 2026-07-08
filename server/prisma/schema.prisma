@@ -24,12 +24,55 @@ model Image {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
+  // --- Processing pipeline (Part 2) ---
+  pipelineStatus      PipelineStatus @default(NOT_STARTED)
+  pipelineError       String?
+  s3KeyNormalized     String?
+  normalizedSizeBytes Int?
+  s3KeyCompressed     String?
+  compressedSizeBytes Int?
+  compressionRatio    Float?
+  variants            ImageVariant[]
+
   @@index([status])
   @@index([phash])
+  @@index([pipelineStatus])
 }
 
 enum ImageStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum PipelineStatus {
+  NOT_STARTED
+  QUEUED
+  CONVERTING
+  COMPRESSING
+  GENERATING_VARIANTS
+  COMPLETE
+  FAILED
+}
+
+model ImageVariant {
+  id        String      @id @default(cuid())
+  imageId   String
+  image     Image       @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  type      VariantType
+  s3Key     String
+  width     Int
+  height    Int
+  sizeBytes Int
+  format    String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([imageId, type])
+}
+
+enum VariantType {
+  THUMBNAIL
+  WEB
+  FULL
 }

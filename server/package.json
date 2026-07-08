@@ -8,7 +8,17 @@
     "start": "node dist/app.js",
     "db:migrate": "dotenv -e ../.env -- prisma migrate dev",
     "db:generate": "dotenv -e ../.env -- prisma generate",
-    "db:studio": "dotenv -e ../.env -- prisma studio"
+    "db:studio": "dotenv -e ../.env -- prisma studio",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev:worker:validation": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/validationWorker.ts",
+    "dev:worker:conversion": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/conversionWorker.ts",
+    "dev:worker:compression": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/compressionWorker.ts",
+    "dev:worker:variant": "ts-node-dev --respawn --transpile-only --ignore-watch node_modules src/workers/variantWorker.ts",
+    "worker:validation": "node dist/workers/validationWorker.js",
+    "worker:conversion": "node dist/workers/conversionWorker.js",
+    "worker:compression": "node dist/workers/compressionWorker.js",
+    "worker:variant": "node dist/workers/variantWorker.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
@@ -23,6 +33,7 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.3.1",
     "file-type": "^16.5.4",
+    "heic-convert": "^2.1.0",
     "helmet": "^7.1.0",
     "multer": "^1.4.5-lts.1",
     "sharp": "^0.33.4",
@@ -36,6 +47,7 @@
     "dotenv-cli": "^11.0.0",
     "prisma": "^5.16.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitest": "^3.2.7"
   }
 }
